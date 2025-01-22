@@ -1,5 +1,4 @@
 #include <iostream>
-#include <vector>
 #include <cstdlib>
 #include <ctime>
 
@@ -10,6 +9,8 @@ const char WATER = '~';  // Water
 const char SHIP = 'S';   // Ship
 const char HIT = 'X';    // Hit
 const char MISS = 'O';   // Miss
+const int MAX_SHIP_SIZE = 3; // Maximum ship size
+const int MAX_SHIPS = 3;     // Number of ships per player
 
 // Structure for coordinates
 struct Coordinate {
@@ -18,24 +19,33 @@ struct Coordinate {
 
 // Structure for a ship
 struct Ship {
-    vector<Coordinate> positions; // Coordinates occupied by the ship
-    bool isSunk = false;          // Flag to check if the ship is sunk
+    Coordinate positions[MAX_SHIP_SIZE]; // Coordinates occupied by the ship
+    int size;                           // Size of the ship
+    bool isSunk;                        // Flag to check if the ship is sunk
+
+    Ship() : size(0), isSunk(false) {}
 };
 
 // Class for the battlefield
 class BattleField {
 public:
-    vector<vector<char>> grid;   // Grid for the battlefield
-    vector<Ship> ships;          // List of ships on the battlefield
+    char grid[GRID_SIZE][GRID_SIZE]; // Grid for the battlefield
+    Ship ships[MAX_SHIPS];          // Array of ships
+    int shipCount;                  // Current number of ships
 
     // Constructor
-    BattleField() {
-        grid = vector<vector<char>>(GRID_SIZE, vector<char>(GRID_SIZE, WATER));
+    BattleField() : shipCount(0) {
+        for (int y = 0; y < GRID_SIZE; ++y) {
+            for (int x = 0; x < GRID_SIZE; ++x) {
+                grid[y][x] = WATER;
+            }
+        }
     }
 
     // Check if a ship can be placed at the specified positions
-    bool canPlaceShip(const vector<Coordinate>& positions) {
-        for (const auto& pos : positions) {
+    bool canPlaceShip(const Ship& ship) {
+        for (int i = 0; i < ship.size; ++i) {
+            const auto& pos = ship.positions[i];
             if (pos.x < 0 || pos.x >= GRID_SIZE || pos.y < 0 || pos.y >= GRID_SIZE) {
                 return false; // Outside the grid boundaries
             }
@@ -48,17 +58,19 @@ public:
 
     // Place a ship on the battlefield
     void placeShip(const Ship& ship) {
-        for (const auto& pos : ship.positions) {
+        for (int i = 0; i < ship.size; ++i) {
+            const auto& pos = ship.positions[i];
             grid[pos.y][pos.x] = SHIP;
         }
-        ships.push_back(ship);
+        ships[shipCount++] = ship;
     }
 
     // Check if a target coordinate is a hit
     bool isHit(const Coordinate& target) {
-        for (auto& ship : ships) {
-            for (const auto& pos : ship.positions) {
-                if (pos.x == target.x && pos.y == target.y) {
+        for (int i = 0; i < shipCount; ++i) {
+            Ship& ship = ships[i];
+            for (int j = 0; j < ship.size; ++j) {
+                if (ship.positions[j].x == target.x && ship.positions[j].y == target.y) {
                     grid[target.y][target.x] = HIT; // Mark as hit
                     checkIfSunk(ship);             // Check if the ship is sunk
                     return true;
@@ -71,7 +83,8 @@ public:
 
     // Check if a ship is sunk
     void checkIfSunk(Ship& ship) {
-        for (const auto& pos : ship.positions) {
+        for (int i = 0; i < ship.size; ++i) {
+            const auto& pos = ship.positions[i];
             if (grid[pos.y][pos.x] != HIT) {
                 return; // If any cell is not hit, the ship is not sunk
             }
@@ -81,8 +94,8 @@ public:
 
     // Check if there are any unsunk ships left
     bool hasShipsLeft() const {
-        for (const auto& ship : ships) {
-            if (!ship.isSunk) return true;
+        for (int i = 0; i < shipCount; ++i) {
+            if (!ships[i].isSunk) return true;
         }
         return false;
     }
@@ -116,15 +129,16 @@ Coordinate getRandomCoordinate() {
 // Generate a random ship of the given size
 Ship generateRandomShip(int size) {
     Ship ship;
+    ship.size = size;
     bool isVertical = rand() % 2;
     Coordinate start = getRandomCoordinate();
 
     for (int i = 0; i < size; ++i) {
         if (isVertical) {
-            ship.positions.push_back({ start.x, start.y + i });
+            ship.positions[i] = { start.x, start.y + i };
         }
         else {
-            ship.positions.push_back({ start.x + i, start.y });
+            ship.positions[i] = { start.x + i, start.y };
         }
     }
     return ship;
@@ -137,17 +151,17 @@ int main() {
     BattleField playerField, computerField;
 
     // Place ships for both player and computer
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < MAX_SHIPS; ++i) {
         Ship playerShip, computerShip;
 
         do {
-            playerShip = generateRandomShip(3); // Ships of size 3 cells
-        } while (!playerField.canPlaceShip(playerShip.positions));
+            playerShip = generateRandomShip(MAX_SHIP_SIZE);
+        } while (!playerField.canPlaceShip(playerShip));
         playerField.placeShip(playerShip);
 
         do {
-            computerShip = generateRandomShip(3);
-        } while (!computerField.canPlaceShip(computerShip.positions));
+            computerShip = generateRandomShip(MAX_SHIP_SIZE);
+        } while (!computerField.canPlaceShip(computerShip));
         computerField.placeShip(computerShip);
     }
 
